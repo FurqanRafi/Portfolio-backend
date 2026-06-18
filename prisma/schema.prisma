@@ -1,0 +1,524 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ContentStatus {
+  DRAFT     @map("draft")
+  PUBLISHED @map("published")
+  ARCHIVED  @map("archived")
+}
+
+enum ContactMessageStatus {
+  NEW     @map("new")
+  READ    @map("read")
+  REPLIED @map("replied")
+  CLOSED  @map("closed")
+  SPAM    @map("spam")
+}
+
+enum SkillCategory {
+  FRONTEND @map("Frontend")
+  BACKEND  @map("Backend")
+  DATABASE @map("Database")
+  DEVOPS   @map("DevOps")
+  TOOLS    @map("Tools")
+  CLOUD    @map("Cloud")
+}
+
+enum TechnologyCategory {
+  FRONTEND @map("Frontend")
+  BACKEND  @map("Backend")
+  DATABASE @map("Database")
+  DEVOPS   @map("DevOps")
+  TOOLS    @map("Tools")
+  CLOUD    @map("Cloud")
+  OTHER    @map("Other")
+}
+
+enum AnalyticsEventName {
+  PAGE_VIEW       @map("page_view")
+  RESUME_DOWNLOAD @map("resume_download")
+  PROJECT_VIEW    @map("project_view")
+  CONTACT_SUBMIT  @map("contact_submit")
+  GITHUB_CLICK    @map("github_click")
+  LINKEDIN_CLICK  @map("linkedin_click")
+  WHATSAPP_CLICK  @map("whatsapp_click")
+}
+
+model User {
+  id                  String               @id @default(uuid()) @db.Uuid
+  name                String               @db.VarChar(150)
+  email               String               @unique @db.VarChar(255)
+  passwordHash        String               @map("password_hash") @db.Text
+  avatarUrl           String?              @map("avatar_url") @db.Text
+  roleId              String               @map("role_id") @db.Uuid
+  isActive            Boolean              @default(true) @map("is_active")
+  lastLoginAt         DateTime?            @map("last_login_at") @db.Timestamp(6)
+  deletedAt           DateTime?            @map("deleted_at") @db.Timestamp(6)
+  deletedBy           String?              @map("deleted_by") @db.Uuid
+  createdAt           DateTime             @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt           DateTime             @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  role                Role                 @relation(fields: [roleId], references: [id])
+  sessions            Session[]
+  passwordResetTokens PasswordResetToken[]
+  createdProjects     Project[]            @relation("ProjectCreatedBy")
+  updatedProjects     Project[]            @relation("ProjectUpdatedBy")
+  authoredBlogs       Blog[]               @relation("BlogAuthor")
+  assignedMessages    ContactMessage[]     @relation("MessageAssignedTo")
+  uploadedResumes     Resume[]             @relation("ResumeUploadedBy")
+  uploadedMedia       MediaAsset[]         @relation("MediaUploadedBy")
+  auditLogs           AuditLog[]
+
+  @@index([email])
+  @@index([roleId])
+  @@index([isActive])
+  @@map("users")
+}
+
+model Role {
+  id              String           @id @default(uuid()) @db.Uuid
+  name            String           @unique @db.VarChar(100)
+  description     String?          @db.Text
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt       DateTime         @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  users           User[]
+  rolePermissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id              String           @id @default(uuid()) @db.Uuid
+  module          String           @db.VarChar(100)
+  action          String           @db.VarChar(50)
+  key             String           @unique @db.VarChar(150)
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamp(6)
+
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String     @id @default(uuid()) @db.Uuid
+  roleId       String     @map("role_id") @db.Uuid
+  permissionId String     @map("permission_id") @db.Uuid
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamp(6)
+
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+model Session {
+  id               String    @id @default(uuid()) @db.Uuid
+  userId           String    @map("user_id") @db.Uuid
+  refreshTokenHash String    @map("refresh_token_hash") @db.Text
+  userAgent        String?   @map("user_agent") @db.Text
+  ipAddress        String?   @map("ip_address") @db.VarChar(100)
+  expiresAt        DateTime  @map("expires_at") @db.Timestamp(6)
+  revokedAt        DateTime? @map("revoked_at") @db.Timestamp(6)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([refreshTokenHash])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @map("token_hash") @db.Text
+  expiresAt DateTime  @map("expires_at") @db.Timestamp(6)
+  usedAt    DateTime? @map("used_at") @db.Timestamp(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@map("password_reset_tokens")
+}
+
+model Project {
+  id               String              @id @default(uuid()) @db.Uuid
+  title            String              @db.VarChar(200)
+  slug             String              @unique @db.VarChar(220)
+  shortDescription String              @map("short_description") @db.Text
+  description      String              @db.Text
+  problemStatement String?             @map("problem_statement") @db.Text
+  solution         String?             @db.Text
+  architecture     String?             @db.Text
+  results          String?             @db.Text
+  lessonsLearned   String?             @map("lessons_learned") @db.Text
+  thumbnailUrl     String?             @map("thumbnail_url") @db.Text
+  liveUrl          String?             @map("live_url") @db.Text
+  githubUrl        String?             @map("github_url") @db.Text
+  categoryId       String              @map("category_id") @db.Uuid
+  status           ContentStatus       @default(DRAFT)
+  isFeatured       Boolean             @default(false) @map("is_featured")
+  displayOrder     Int                 @default(0) @map("display_order")
+  createdById      String              @map("created_by") @db.Uuid
+  updatedById      String?             @map("updated_by") @db.Uuid
+  publishedAt      DateTime?           @map("published_at") @db.Timestamp(6)
+  deletedAt        DateTime?           @map("deleted_at") @db.Timestamp(6)
+  deletedBy        String?             @map("deleted_by") @db.Uuid
+  createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt        DateTime            @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  category         ProjectCategory     @relation(fields: [categoryId], references: [id])
+  createdBy        User                @relation("ProjectCreatedBy", fields: [createdById], references: [id])
+  updatedBy        User?               @relation("ProjectUpdatedBy", fields: [updatedById], references: [id])
+  images           ProjectImage[]
+  technologies     ProjectTechnology[]
+
+  @@index([slug])
+  @@index([categoryId])
+  @@index([status])
+  @@index([isFeatured])
+  @@index([displayOrder])
+  @@index([createdById])
+  @@map("projects")
+}
+
+model ProjectCategory {
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String    @unique @db.VarChar(150)
+  slug        String    @unique @db.VarChar(170)
+  description String?   @db.Text
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  projects    Project[]
+
+  @@map("project_categories")
+}
+
+model ProjectImage {
+  id           String   @id @default(uuid()) @db.Uuid
+  projectId    String   @map("project_id") @db.Uuid
+  imageUrl     String   @map("image_url") @db.Text
+  altText      String?  @map("alt_text") @db.VarChar(255)
+  caption      String?  @db.Text
+  displayOrder Int      @default(0) @map("display_order")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([displayOrder])
+  @@map("project_images")
+}
+
+model Technology {
+  id        String              @id @default(uuid()) @db.Uuid
+  name      String              @unique @db.VarChar(100)
+  iconUrl   String?             @map("icon_url") @db.Text
+  category  TechnologyCategory
+  createdAt DateTime            @default(now()) @map("created_at") @db.Timestamp(6)
+
+  projects  ProjectTechnology[]
+
+  @@map("technologies")
+}
+
+model ProjectTechnology {
+  id           String     @id @default(uuid()) @db.Uuid
+  projectId    String     @map("project_id") @db.Uuid
+  technologyId String     @map("technology_id") @db.Uuid
+
+  project      Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  technology   Technology @relation(fields: [technologyId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, technologyId])
+  @@index([projectId])
+  @@index([technologyId])
+  @@map("project_technologies")
+}
+
+model Blog {
+  id             String        @id @default(uuid()) @db.Uuid
+  title          String        @db.VarChar(250)
+  slug           String        @unique @db.VarChar(270)
+  excerpt        String?       @db.Text
+  content        String        @db.Text
+  thumbnailUrl   String?       @map("thumbnail_url") @db.Text
+  categoryId     String        @map("category_id") @db.Uuid
+  authorId       String        @map("author_id") @db.Uuid
+  status         ContentStatus @default(DRAFT)
+  readingTime    Int?          @map("reading_time")
+  viewsCount     Int           @default(0) @map("views_count")
+  seoTitle       String?       @map("seo_title") @db.VarChar(255)
+  seoDescription String?       @map("seo_description") @db.Text
+  publishedAt    DateTime?     @map("published_at") @db.Timestamp(6)
+  deletedAt      DateTime?     @map("deleted_at") @db.Timestamp(6)
+  deletedBy      String?       @map("deleted_by") @db.Uuid
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt      DateTime      @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  category       BlogCategory  @relation(fields: [categoryId], references: [id])
+  author         User          @relation("BlogAuthor", fields: [authorId], references: [id])
+  tags           BlogTagMap[]
+
+  @@index([slug])
+  @@index([categoryId])
+  @@index([authorId])
+  @@index([status])
+  @@index([publishedAt])
+  @@map("blogs")
+}
+
+model BlogCategory {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique @db.VarChar(150)
+  slug        String   @unique @db.VarChar(170)
+  description String?  @db.Text
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  blogs       Blog[]
+
+  @@map("blog_categories")
+}
+
+model BlogTag {
+  id    String       @id @default(uuid()) @db.Uuid
+  name  String       @unique @db.VarChar(100)
+  slug  String       @unique @db.VarChar(120)
+
+  blogs BlogTagMap[]
+
+  @@map("blog_tags")
+}
+
+model BlogTagMap {
+  id     String  @id @default(uuid()) @db.Uuid
+  blogId String  @map("blog_id") @db.Uuid
+  tagId  String  @map("tag_id") @db.Uuid
+
+  blog   Blog    @relation(fields: [blogId], references: [id], onDelete: Cascade)
+  tag    BlogTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([blogId, tagId])
+  @@index([blogId])
+  @@index([tagId])
+  @@map("blog_tag_map")
+}
+
+model Skill {
+  id           String        @id @default(uuid()) @db.Uuid
+  name         String        @db.VarChar(100)
+  category     SkillCategory
+  iconUrl      String?       @map("icon_url") @db.Text
+  level        Int?
+  displayOrder Int           @default(0) @map("display_order")
+  isFeatured   Boolean       @default(false) @map("is_featured")
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt    DateTime      @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@index([category])
+  @@index([displayOrder])
+  @@index([isFeatured])
+  @@map("skills")
+}
+
+model Experience {
+  id             String    @id @default(uuid()) @db.Uuid
+  companyName    String    @map("company_name") @db.VarChar(200)
+  roleTitle      String    @map("role_title") @db.VarChar(200)
+  location       String?   @db.VarChar(150)
+  startDate      DateTime  @map("start_date") @db.Date
+  endDate        DateTime? @map("end_date") @db.Date
+  isCurrent      Boolean   @default(false) @map("is_current")
+  description    String?   @db.Text
+  achievements   Json?
+  technologies   Json?
+  companyLogoUrl String?   @map("company_logo_url") @db.Text
+  displayOrder   Int       @default(0) @map("display_order")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@index([displayOrder])
+  @@map("experiences")
+}
+
+model Education {
+  id            String    @id @default(uuid()) @db.Uuid
+  instituteName String    @map("institute_name") @db.VarChar(200)
+  degree        String    @db.VarChar(200)
+  field         String?   @db.VarChar(150)
+  startDate     DateTime? @map("start_date") @db.Date
+  endDate       DateTime? @map("end_date") @db.Date
+  location      String?   @db.VarChar(150)
+  description   String?   @db.Text
+  displayOrder  Int       @default(0) @map("display_order")
+
+  @@index([displayOrder])
+  @@map("education")
+}
+
+model Testimonial {
+  id          String        @id @default(uuid()) @db.Uuid
+  clientName  String        @map("client_name") @db.VarChar(150)
+  designation String?       @db.VarChar(150)
+  company     String?       @db.VarChar(150)
+  avatarUrl   String?       @map("avatar_url") @db.Text
+  rating      Int
+  review      String        @db.Text
+  isFeatured  Boolean       @default(false) @map("is_featured")
+  status      ContentStatus @default(DRAFT)
+  deletedAt   DateTime?     @map("deleted_at") @db.Timestamp(6)
+  deletedBy   String?       @map("deleted_by") @db.Uuid
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt   DateTime      @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@index([status])
+  @@index([isFeatured])
+  @@map("testimonials")
+}
+
+model ContactMessage {
+  id           String               @id @default(uuid()) @db.Uuid
+  name         String               @db.VarChar(150)
+  email        String               @db.VarChar(255)
+  phone        String?              @db.VarChar(50)
+  subject      String?              @db.VarChar(255)
+  message      String               @db.Text
+  source       String?              @db.VarChar(100)
+  status       ContactMessageStatus @default(NEW)
+  isRead       Boolean              @default(false) @map("is_read")
+  assignedToId String?              @map("assigned_to") @db.Uuid
+  createdAt    DateTime             @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt    DateTime             @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  assignedTo   User?                @relation("MessageAssignedTo", fields: [assignedToId], references: [id])
+
+  @@index([email])
+  @@index([status])
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("contact_messages")
+}
+
+model Resume {
+  id            String   @id @default(uuid()) @db.Uuid
+  title         String   @db.VarChar(150)
+  fileUrl       String   @map("file_url") @db.Text
+  version       String   @db.VarChar(50)
+  isActive      Boolean  @default(false) @map("is_active")
+  downloadCount Int      @default(0) @map("download_count")
+  uploadedById  String   @map("uploaded_by") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  uploadedBy    User     @relation("ResumeUploadedBy", fields: [uploadedById], references: [id])
+
+  @@index([isActive])
+  @@index([uploadedById])
+  @@map("resumes")
+}
+
+model MediaAsset {
+  id         String   @id @default(uuid()) @db.Uuid
+  fileName   String   @map("file_name") @db.VarChar(255)
+  fileUrl    String   @map("file_url") @db.Text
+  fileType   String   @map("file_type") @db.VarChar(100)
+  fileSize   Int?     @map("file_size")
+  provider   String   @db.VarChar(100)
+  publicId   String?  @map("public_id") @db.VarChar(255)
+  altText    String?  @map("alt_text") @db.VarChar(255)
+  uploadedBy String   @map("uploaded_by") @db.Uuid
+  deletedAt  DateTime? @map("deleted_at") @db.Timestamp(6)
+  deletedBy  String?   @map("deleted_by") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  uploader   User     @relation("MediaUploadedBy", fields: [uploadedBy], references: [id])
+
+  @@index([fileType])
+  @@index([uploadedBy])
+  @@index([createdAt])
+  @@map("media_assets")
+}
+
+model SeoMetadata {
+  id                 String   @id @default(uuid()) @db.Uuid
+  pageType           String   @map("page_type") @db.VarChar(100)
+  pageRefId          String?  @map("page_ref_id") @db.Uuid
+  title              String   @db.VarChar(255)
+  description        String   @db.Text
+  keywords           String?  @db.Text
+  canonicalUrl       String?  @map("canonical_url") @db.Text
+  ogTitle            String?  @map("og_title") @db.VarChar(255)
+  ogDescription      String?  @map("og_description") @db.Text
+  ogImageUrl         String?  @map("og_image_url") @db.Text
+  twitterTitle       String?  @map("twitter_title") @db.VarChar(255)
+  twitterDescription String?  @map("twitter_description") @db.Text
+  twitterImageUrl    String?  @map("twitter_image_url") @db.Text
+  noIndex            Boolean  @default(false) @map("no_index")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@index([pageType])
+  @@index([pageRefId])
+  @@index([noIndex])
+  @@map("seo_metadata")
+}
+
+model SiteSetting {
+  id        String   @id @default(uuid()) @db.Uuid
+  key       String   @unique @db.VarChar(150)
+  value     Json
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@map("site_settings")
+}
+
+model AnalyticsEvent {
+  id        String             @id @default(uuid()) @db.Uuid
+  eventName AnalyticsEventName @map("event_name")
+  pageUrl   String?            @map("page_url") @db.Text
+  referrer  String?            @db.Text
+  metadata  Json?
+  ipAddress String?            @map("ip_address") @db.VarChar(100)
+  userAgent String?            @map("user_agent") @db.Text
+  createdAt DateTime           @default(now()) @map("created_at") @db.Timestamp(6)
+
+  @@index([eventName])
+  @@index([createdAt])
+  @@map("analytics_events")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  action    String   @db.VarChar(150)
+  module    String   @db.VarChar(100)
+  entityId  String?  @map("entity_id") @db.Uuid
+  oldValues Json?    @map("old_values")
+  newValues Json?    @map("new_values")
+  ipAddress String?  @map("ip_address") @db.VarChar(100)
+  userAgent String?  @map("user_agent") @db.Text
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([module])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
