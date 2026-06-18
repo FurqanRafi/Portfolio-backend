@@ -14,9 +14,15 @@ describe('AppController', () => {
     appController = app.get<AppController>(AppController);
   });
 
-  describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(appController.getHello()).toBe('Hello World!');
+Specs Fixing  describe('root health', () => {
+    it('should return API health status', () => {
+      expect(appController.getHealth()).toEqual(
+        expect.objectContaining({
+          status: 'ok',
+          message: 'Portfolio API is running',
+          version: '1.0.0',
+        }),
+      );
     });
   });
 });

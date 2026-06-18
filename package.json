@@ -11,7 +11,7 @@
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
-    "start:prod": "node dist/main",
+    "start:prod": "node dist/src/main.js",
     "lint": "eslint {src,apps,libs,test,prisma}/**/*.ts --fix",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -23,7 +23,8 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "db:seed": "ts-node prisma/seed.ts"
+    "db:seed": "ts-node prisma/seed.ts",
+    "prisma:migrate:deploy": "prisma migrate deploy"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

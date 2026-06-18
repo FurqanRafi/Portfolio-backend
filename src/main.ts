@@ -1,5 +1,5 @@
 import compression from 'compression';
-import { ValidationPipe } from '@nestjs/common';
+import { RequestMethod, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
@@ -12,7 +12,12 @@ async function bootstrap() {
   const apiPrefix = process.env.API_PREFIX ?? 'api/v1';
   const corsOrigin = process.env.CORS_ORIGIN ?? 'http://localhost:3000';
 
-  app.setGlobalPrefix(apiPrefix);
+  app.setGlobalPrefix(apiPrefix, {
+    exclude: [
+      { path: '', method: RequestMethod.GET },
+      { path: '/', method: RequestMethod.GET },
+    ],
+  });
   app.enableCors({
     origin: corsOrigin.split(',').map((origin) => origin.trim()),
     credentials: true,
