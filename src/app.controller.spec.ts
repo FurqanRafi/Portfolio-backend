@@ -14,7 +14,7 @@ describe('AppController', () => {
     appController = app.get<AppController>(AppController);
   });
 
-Specs Fixing  describe('root health', () => {
+  describe('root health', () => {
     it('should return API health status', () => {
       expect(appController.getHealth()).toEqual(
         expect.objectContaining({

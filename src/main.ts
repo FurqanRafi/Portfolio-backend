@@ -1,7 +1,8 @@
 import compression from 'compression';
-import { RequestMethod, ValidationPipe } from '@nestjs/common';
+import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import type { NextFunction, Request, Response } from 'express';
 import helmet from 'helmet';
 
 import { AppModule } from './app.module';
@@ -12,12 +13,19 @@ async function bootstrap() {
   const apiPrefix = process.env.API_PREFIX ?? 'api/v1';
   const corsOrigin = process.env.CORS_ORIGIN ?? 'http://localhost:3000';
 
-  app.setGlobalPrefix(apiPrefix, {
-    exclude: [
-      { path: '', method: RequestMethod.GET },
-      { path: '/', method: RequestMethod.GET },
-    ],
+  app.use((request: Request, response: Response, next: NextFunction) => {
+    if (request.method === 'GET' && request.path === '/') {
+      return response.json({
+        status: 'ok',
+        message: 'Portfolio API is running',
+        timestamp: new Date().toISOString(),
+        version: '1.0.0',
+      });
+    }
+
+    return next();
   });
+  app.setGlobalPrefix(apiPrefix);
   app.enableCors({
     origin: corsOrigin.split(',').map((origin) => origin.trim()),
     credentials: true,

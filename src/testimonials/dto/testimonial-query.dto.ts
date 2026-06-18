@@ -1,3 +1,4 @@
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsBoolean, IsEnum, IsOptional } from 'class-validator';
 
@@ -6,10 +7,15 @@ import { toBoolean } from '../../common/utils/boolean-transformer';
 import { ContentStatus } from '../../generated/prisma';
 
 export class TestimonialQueryDto extends PaginationQueryDto {
+  @ApiPropertyOptional({
+    enum: ContentStatus,
+    example: ContentStatus.PUBLISHED,
+  })
   @IsOptional()
   @IsEnum(ContentStatus)
   status?: ContentStatus;
 
+  @ApiPropertyOptional({ example: true })
   @IsOptional()
   @Transform(({ value }) => toBoolean(value))
   @IsBoolean()
