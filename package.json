@@ -6,7 +6,7 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "build": "npm run prisma:generate && nest build",
+    "build": "prisma generate && nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "npm run railway:start",
     "start:dev": "nest start --watch",
@@ -27,7 +27,7 @@
     "prisma:migrate:deploy": "prisma migrate deploy",
     "start:direct": "node dist/src/main.js",
     "db:seed:prod": "node dist/prisma/seed.js",
-    "railway:start": "npm run prisma:migrate:deploy && npm run db:seed:prod && node dist/src/main.js",
+    "railway:start": "prisma migrate deploy && node dist/prisma/seed.js && node dist/src/main.js",
     "dev": "nest start --watch"
   },
   "dependencies": {
@@ -102,5 +102,10 @@
     ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"
-  }
+  },
+  "engines": {
+    "node": ">=20.19.0",
+    "yarn": "1.22.x"
+  },
+  "packageManager": "yarn@1.22.22"
 }
