@@ -10,9 +10,13 @@ export class PrismaService
   implements OnModuleInit, OnModuleDestroy
 {
   constructor(configService: ConfigService) {
-    const connectionString =
-      configService.get<string>('DATABASE_URL') ??
-      'postgresql://postgres:postgres@localhost:5432/portfolio?schema=public';
+    const connectionString = configService.get<string>('DATABASE_URL');
+
+    if (!connectionString) {
+      throw new Error(
+        'DATABASE_URL is required. Set the Railway PostgreSQL DATABASE_URL in backend service variables.',
+      );
+    }
 
     const adapter = new PrismaPg({ connectionString });
     super({ adapter });
