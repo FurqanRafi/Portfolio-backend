@@ -6,7 +6,7 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "build": "prisma generate && nest build",
+    "build": "prisma generate && nest build && node scripts/verify-build.cjs",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "npm run railway:start",
     "start:dev": "nest start --watch",
@@ -27,8 +27,9 @@
     "prisma:migrate:deploy": "prisma migrate deploy",
     "start:direct": "node dist/src/main.js",
     "db:seed:prod": "node dist/prisma/seed.js",
-    "railway:start": "prisma migrate deploy && node dist/prisma/seed.js && node dist/src/main.js",
-    "dev": "nest start --watch"
+    "railway:start": "node scripts/railway-start.cjs",
+    "dev": "nest start --watch",
+    "verify:build": "node scripts/verify-build.cjs"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
